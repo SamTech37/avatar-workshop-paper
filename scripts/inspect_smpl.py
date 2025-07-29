@@ -90,7 +90,7 @@ print("\n=== Saving to .npz format ===")
 
 # Generate output filename based on input filename
 input_name = os.path.splitext(os.path.basename(motion_file))[0]
-output_file = f'./{input_name}.npz'
+output_file = f'./{input_name}_formated.npz'
 np.savez(output_file, 
          poses=poses_numpy,  # (frames, 72)
          trans=transl        # (frames, 3)
