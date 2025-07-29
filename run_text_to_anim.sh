@@ -8,17 +8,21 @@ export CUDA_VISIBLE_DEVICES=0
 
 
 # ===input variables===
+
+# DO NOT output at the same directory as the script
+# the mdm script will wipe the output directory clean
+# so we need to set a different output directory, e.g. a subdirectory /output
+result_dir="$(pwd)/output" 
+
+
 motion_model_name="humanml_enc_512_50steps/"
 motion_model_dir="save/${motion_model_name}"
 
 
 avatar_name="lab-2025-07-16_08-01-21"
 avatar_model_dir="../ml-hugs/avatars/${avatar_name}"
-result_dir=""
 
 text_prompt="A person walking in circles"
-
-
 
 
 # ===main program===
@@ -31,22 +35,19 @@ echo "Activating mdm environment for SMPL motion generation... in $(pwd)"
 
 # get the model file in the directory
 motion_model_file="$(ls -1v ${motion_model_dir}/model*.pt | tail -n1)" 
-
-
-ls "${motion_model_dir}"
-echo "conda running task"
-
 echo "full path = ${motion_model_file}"
 
+
+echo "conda running task"
 conda run -n mdm python -m sample.generate \
     --model_path "${motion_model_file}" \
-    --text_prompt "${text_prompt}" \
     --output_dir "${result_dir}" \
+    --text_prompt "${text_prompt}" \
     --num_samples 1  \
     --num_repetitions 1
 
 
-#...
+# conver the npy file to SMPL format conforming to HUGS
 
 
 echo "SMPL motion generation complete."
