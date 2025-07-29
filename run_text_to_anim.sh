@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -e
 
 # ===ENV==
@@ -8,11 +7,18 @@ set -e
 export CUDA_VISIBLE_DEVICES=0
 
 
+# ===input variables===
+motion_model_name="humanml_enc_512_50steps/"
+motion_model_dir="save/${motion_model_name}"
 
-# ===variables===
-MOTION_MODEL_DIR=""
-AVATAR_MODEL_DIR=""
-RESULT_DIR=""
+
+avatar_name="lab-2025-07-16_08-01-21"
+avatar_model_dir="../ml-hugs/avatars/${avatar_name}"
+result_dir=""
+
+text_prompt="A person walking in circles"
+
+
 
 
 # ===main program===
@@ -20,17 +26,38 @@ RESULT_DIR=""
 echo "Starting pipeline..."
 
 # generate the SMPL motion
-echo "Activating mdm environment for SMPL motion generation..."
-conda activate mdm
+cd "../motion-diffusion-model"
+echo "Activating mdm environment for SMPL motion generation... in $(pwd)"
+
+# get the model file in the directory
+motion_model_file="$(ls -1v ${motion_model_dir}/model*.pt | tail -n1)" 
+
+
+ls "${motion_model_dir}"
+echo "conda running task"
+
+echo "full path = ${motion_model_file}"
+
+conda run -n mdm python -m sample.generate \
+    --model_path "${motion_model_file}" \
+    --text_prompt "${text_prompt}" \
+    --output_dir "${result_dir}" \
+    --num_samples 1  \
+    --num_repetitions 1
+
 
 #...
 
 
 echo "SMPL motion generation complete."
 
+
 # run the animation script
 echo "Activating hugs environment for animation..."
-conda activate hugs
+
+
+
+ls "${avatar_model_dir}"
 
 #...
 
