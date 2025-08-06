@@ -90,9 +90,11 @@ print("\n=== Saving to .npz format ===")
 # - 'poses': (frames, 72) - body pose parameters in axis-angle format
 # - 'trans': (frames, 3) - root translation
 
-# Generate output filename based on input filename
+# Generate output filename in the same directory as input file
+input_dir = os.path.dirname(motion_file)
 input_name = os.path.splitext(os.path.basename(motion_file))[0]
-output_file = f'./{input_name}_formated.npz'
+output_file = os.path.join(input_dir, f'{input_name}_formatted.npz')
+
 np.savez(output_file, 
          poses=poses_numpy,  # (frames, 72)
          trans=transl        # (frames, 3)

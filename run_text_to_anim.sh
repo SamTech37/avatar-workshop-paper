@@ -23,8 +23,9 @@ avatar_name="lab-2025-07-16_08-01-21"
 avatar_model_dir="../ml-hugs/avatars/${avatar_name}"
 avatar_output_file="anim_neuman_ours_final.mp4"
 
-# change this to input argument 
-text_prompt="A person is doing cartwheels"
+# input text prompt
+text_prompt="${1:-A person is doing cartwheels}"
+echo "Text prompt: ${text_prompt}"
 
 
 
@@ -62,21 +63,27 @@ conda run -n mdm python -m visualize.pick_sample \
 
 echo "SMPL motion generation complete."
 
-# convert the motion npy file to SMPL format conforming to HUGS
-
+# convert the motion npy file to SMPL format npz file conforming to HUGS
 cd "${main_dir}"
 conda run -n hugs python "./scripts/inspect_smpl.py" \
     "${result_dir}/smpl_params.npy" 
 
+npz_file="$(ls -1v ${result_dir}/*.npz | tail -n1)"
+echo "npz file = ${npz_file}"
+cp "${npz_file}" "../ml-hugs/smpl_params.npz"
 
 
 # run the animation script
+cd "../ml-hugs"
 echo "Activating hugs environment for animation..."
 
-cd "../ml-hugs"
 
+echo "Running HUGS animation script... in $(pwd), this could take a while"
+conda run -n hugs python scripts/hugs_animate.py \
+    -o "${avatar_model_dir}" 
+
+cp "${avatar_model_dir}/${avatar_output_file}" "${result_dir}/${text_prompt// /_}.mp4"
 
 #...
-
 
 echo "Pipeline complete."
