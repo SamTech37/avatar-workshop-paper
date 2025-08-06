@@ -14,6 +14,8 @@ export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 # Command line arguments with defaults
 text_prompt="${1:-A person is doing cartwheels}"
 
+total_stages=3
+
 # Directories (relative to script location)
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 main_dir="$script_dir"
@@ -46,6 +48,17 @@ error() {
     exit 1
 }
 
+# Benchmarking functions
+start_timer() {
+    timer_start=$(date +%s)
+}
+
+end_timer() {
+    timer_end=$(date +%s)
+    elapsed=$((timer_end - timer_start))
+    echo "⏱️  Stage completed in ${elapsed}s ($(date -u -d @${elapsed} +%H:%M:%S))"
+}
+
 # ===VALIDATION===
 
 # Validate directories exist
@@ -55,6 +68,8 @@ error() {
 [ -d "$avatar_model_dir" ] || error "Avatar directory not found: $avatar_model_dir"
 
 # ===MAIN PIPELINE===
+# Track total pipeline time
+pipeline_start=$(date +%s)
 
 log "Starting text-to-animation pipeline"
 log "Text prompt: $text_prompt"
@@ -71,7 +86,8 @@ cp "$script_dir/scripts/pick_sample.py" "$mdm_dir/visualize/pick_sample.py" || e
 cp "$script_dir/scripts/hugs_animate.py" "$hugs_dir/scripts/hugs_animate.py" || error "Failed to copy hugs_animate.py"
 
 # Step 1: Generate SMPL motion
-log "Step 1: Generating SMPL motion"
+start_timer
+log "Step 1/$total_stages: Generating SMPL motion"
 cd "$mdm_dir"
 
 # Find the latest model file
@@ -98,9 +114,11 @@ conda run -n "$mdm_env" python -m visualize.pick_sample \
     --output_dir "$result_dir" || error "Sample extraction failed"
 
 log "SMPL motion generation complete"
+end_timer
 
 # Step 2: Convert motion format
-log "Step 2: Converting motion format for HUGS"
+start_timer
+log "Step 2/$total_stages: Converting motion format for HUGS"
 cd "$main_dir"
 
 smpl_npy="$result_dir/smpl_params.npy"
@@ -114,9 +132,11 @@ npz_file="$(ls -1v "$result_dir"/*.npz 2>/dev/null | tail -n1)"
 log "Using NPZ file: $npz_file"
 
 cp "$npz_file" "$hugs_dir/smpl_params.npz" || error "Failed to copy NPZ file"
+end_timer
 
 # Step 3: Run HUGS animation
-log "Step 3: Running HUGS animation (this may take a while)"
+start_timer
+log "Step 3/$total_stages: Running HUGS animation (this may take a while)"
 cd "$hugs_dir"
 
 conda run -n "$hugs_env" python scripts/hugs_animate.py \
@@ -127,12 +147,18 @@ output_video="$avatar_model_dir/$avatar_output_file"
 if [ -f "$output_video" ]; then
     # Sanitize text prompt for filename (replace spaces with underscores, remove special chars)
     sanitized_prompt=$(echo "$text_prompt" | sed 's/[^a-zA-Z0-9 ]//g' | tr ' ' '_')
-    final_output="{$result_dir}_video/${sanitized_prompt}.mp4"
+    final_output="${result_dir}_video/${sanitized_prompt}.mp4"
     cp "$output_video" "$final_output"
     log "Animation complete! Final video: $final_output"
 else
     log "Animation completed but output video not found at expected location: $output_video"
 fi
 
-log "Pipeline complete!"
+end_timer
+
+pipeline_end=$(date +%s)
+total_elapsed=$((pipeline_end - pipeline_start))
+
+og "Pipeline complete!"
 log "Results saved in: $result_dir"
+echo "🏁 Total pipeline time: ${total_elapsed}s ($(date -u -d @${total_elapsed} +%H:%M:%S))"
