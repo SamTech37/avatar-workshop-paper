@@ -1,89 +1,138 @@
 #!/bin/bash
 set -e
 
-# ===ENV==
+# Usage: ./run_text_to_anim.sh ["text prompt"]
+# Examples:
+#   ./run_text_to_anim.sh
+#   ./run_text_to_anim.sh "A person is walking"
 
-# set to available GPU, id = 0,1,2,3
-export CUDA_VISIBLE_DEVICES=0
+# ===CONFIGURATION===
 
+# GPU selection
+export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 
-# ===input variables===
+# Command line arguments with defaults
+text_prompt="${1:-A person is doing cartwheels}"
 
-# DO NOT output at the same directory as the script
-# the mdm script will wipe the output directory clean
-# so we need to set a different output directory, e.g. a subdirectory /output
+# Directories (relative to script location)
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+main_dir="$script_dir"
+result_dir="$script_dir/output"
+mdm_dir="$script_dir/../motion-diffusion-model"
+hugs_dir="$script_dir/../ml-hugs"
 
-main_dir="$(pwd)"
-result_dir="$(pwd)/output" 
-
-motion_model_name="humanml_enc_512_50steps/"
-motion_model_dir="save/${motion_model_name}"
+# Model configuration
+motion_model_name="humanml_enc_512_50steps"
+motion_model_dir="$mdm_dir/save/$motion_model_name"
 
 avatar_name="lab-2025-07-16_08-01-21"
-avatar_model_dir="../ml-hugs/avatars/${avatar_name}"
+avatar_model_dir="$hugs_dir/avatars/$avatar_name"
 avatar_output_file="anim_neuman_ours_final.mp4"
 
-# input text prompt
-text_prompt="${1:-A person is doing cartwheels}"
-echo "Text prompt: ${text_prompt}"
+motion_length="9.8"
 
+# Conda environments
+mdm_env="mdm"
+hugs_env="hugs"
 
+# ===HELPER FUNCTIONS===
 
-# ===main program===
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
 
-echo "Starting pipeline... in $(pwd)"
+error() {
+    echo "[ERROR] $1" >&2
+    exit 1
+}
 
-echo "copying scripts"
-cp "./scripts/pick_sample.py" "../motion-diffusion-model/visualize/pick_sample.py"
-cp "./scripts/hugs_animate.py" "../ml-hugs/scripts/hugs_animate.py"
+# ===VALIDATION===
 
-cd "../motion-diffusion-model"
-echo "Activating mdm environment for SMPL motion generation... in $(pwd)"
+# Validate directories exist
+[ -d "$mdm_dir" ] || error "Motion diffusion model directory not found: $mdm_dir"
+[ -d "$hugs_dir" ] || error "HUGS directory not found: $hugs_dir"
+[ -d "$motion_model_dir" ] || error "Motion model directory not found: $motion_model_dir"
+[ -d "$avatar_model_dir" ] || error "Avatar directory not found: $avatar_model_dir"
 
-# get the model file in the directory
-motion_model_file="$(ls -1v ${motion_model_dir}/model*.pt | tail -n1)" 
-echo "full path = ${motion_model_file}"
+# ===MAIN PIPELINE===
 
-# generate the SMPL motion
-echo "conda running task"
-conda run -n mdm python -m sample.generate \
-    --model_path "${motion_model_file}" \
-    --output_dir "${result_dir}" \
-    --text_prompt "${text_prompt}" \
-    --num_samples 1  \
+log "Starting text-to-animation pipeline"
+log "Text prompt: $text_prompt"
+log "Avatar: $avatar_name"
+log "Motion length: ${motion_length}s"
+log "GPU: $CUDA_VISIBLE_DEVICES"
+
+# Create output directory
+mkdir -p "$result_dir"
+
+# Copy required scripts
+log "Copying scripts"
+cp "$script_dir/scripts/pick_sample.py" "$mdm_dir/visualize/pick_sample.py" || error "Failed to copy pick_sample.py"
+cp "$script_dir/scripts/hugs_animate.py" "$hugs_dir/scripts/hugs_animate.py" || error "Failed to copy hugs_animate.py"
+
+# Step 1: Generate SMPL motion
+log "Step 1: Generating SMPL motion"
+cd "$mdm_dir"
+
+# Find the latest model file
+motion_model_file="$(ls -1v "$motion_model_dir"/model*.pt 2>/dev/null | tail -n1)"
+[ -f "$motion_model_file" ] || error "No model file found in $motion_model_dir"
+log "Using model: $motion_model_file"
+
+# Generate motion
+log "Running motion generation..."
+conda run -n "$mdm_env" python -m sample.generate \
+    --model_path "$motion_model_file" \
+    --output_dir "$result_dir" \
+    --text_prompt "$text_prompt" \
+    --num_samples 1 \
     --num_repetitions 1 \
-    --motion_length 9.8
+    --motion_length "$motion_length" || error "Motion generation failed"
 
-
-conda run -n mdm python -m visualize.pick_sample \
-    --npy_path "${result_dir}/results.npy" \
+# Extract sample
+log "Extracting motion sample..."
+conda run -n "$mdm_env" python -m visualize.pick_sample \
+    --npy_path "$result_dir/results.npy" \
     --sample_id 0 \
     --rep_id 0 \
-    --output_dir  "${result_dir}" 
+    --output_dir "$result_dir" || error "Sample extraction failed"
 
-echo "SMPL motion generation complete."
+log "SMPL motion generation complete"
 
-# convert the motion npy file to SMPL format npz file conforming to HUGS
-cd "${main_dir}"
-conda run -n hugs python "./scripts/inspect_smpl.py" \
-    "${result_dir}/smpl_params.npy" 
+# Step 2: Convert motion format
+log "Step 2: Converting motion format for HUGS"
+cd "$main_dir"
 
-npz_file="$(ls -1v ${result_dir}/*.npz | tail -n1)"
-echo "npz file = ${npz_file}"
-cp "${npz_file}" "../ml-hugs/smpl_params.npz"
+smpl_npy="$result_dir/smpl_params.npy"
+[ -f "$smpl_npy" ] || error "SMPL parameters file not found: $smpl_npy"
 
+conda run -n "$hugs_env" python "$script_dir/scripts/inspect_smpl.py" "$smpl_npy" || error "Motion conversion failed"
 
-# run the animation script
-cd "../ml-hugs"
-echo "Activating hugs environment for animation..."
+# Find and copy the generated npz file
+npz_file="$(ls -1v "$result_dir"/*.npz 2>/dev/null | tail -n1)"
+[ -f "$npz_file" ] || error "No NPZ file found in $result_dir"
+log "Using NPZ file: $npz_file"
 
+cp "$npz_file" "$hugs_dir/smpl_params.npz" || error "Failed to copy NPZ file"
 
-echo "Running HUGS animation script... in $(pwd), this could take a while"
-conda run -n hugs python scripts/hugs_animate.py \
-    -o "${avatar_model_dir}" 
+# Step 3: Run HUGS animation
+log "Step 3: Running HUGS animation (this may take a while)"
+cd "$hugs_dir"
 
-cp "${avatar_model_dir}/${avatar_output_file}" "${result_dir}/${text_prompt// /_}.mp4"
+conda run -n "$hugs_env" python scripts/hugs_animate.py \
+    -o "$avatar_model_dir" || error "HUGS animation failed"
 
-#...
+# Copy final output with sanitized filename
+output_video="$avatar_model_dir/$avatar_output_file"
+if [ -f "$output_video" ]; then
+    # Sanitize text prompt for filename (replace spaces with underscores, remove special chars)
+    sanitized_prompt=$(echo "$text_prompt" | sed 's/[^a-zA-Z0-9 ]//g' | tr ' ' '_')
+    final_output="{$result_dir}_video/${sanitized_prompt}.mp4"
+    cp "$output_video" "$final_output"
+    log "Animation complete! Final video: $final_output"
+else
+    log "Animation completed but output video not found at expected location: $output_video"
+fi
 
-echo "Pipeline complete."
+log "Pipeline complete!"
+log "Results saved in: $result_dir"
