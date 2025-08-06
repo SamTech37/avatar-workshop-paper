@@ -27,7 +27,11 @@ text_prompt="A person walking in circles"
 
 # ===main program===
 
-echo "Starting pipeline..."
+echo "Starting pipeline... in $(pwd)"
+
+echo "copying scripts"
+mv "./scripts/pick_sample.py" "../motion-diffusion-model/visualize/pick_sample.py"
+
 
 # generate the SMPL motion
 cd "../motion-diffusion-model"
@@ -46,11 +50,19 @@ conda run -n mdm python -m sample.generate \
     --num_samples 1  \
     --num_repetitions 1
 
-
-# conver the npy file to SMPL format conforming to HUGS
-
-
 echo "SMPL motion generation complete."
+
+# convert the npy file to SMPL format conforming to HUGS
+
+conda run -n mdm python -m visualize.pick_sample \
+    --npy_path "${result_dir}/results.npy" \
+    --sample_id 0 \
+    --rep_id 0 \
+    --output_dir  "${result_dir}" 
+
+
+
+
 
 
 # run the animation script
