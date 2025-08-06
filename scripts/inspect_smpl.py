@@ -19,6 +19,8 @@ motion_file = sys.argv[1]
 if not os.path.exists(motion_file):
     print(f"Error: File '{motion_file}' not found")
     sys.exit(1)
+else:
+    print(f"Loading motion data from: {motion_file}")
 data = np.load(motion_file, allow_pickle=True).item()
 
 print("Loaded data keys:", data.keys())
@@ -108,4 +110,4 @@ print(f"Loaded keys: {list(saved_data.keys())}")
 print(f"poses shape: {saved_data['poses'].shape}")
 print(f"trans shape: {saved_data['trans'].shape}")
 
-print("\nFile ready for NeuMan dataset!")
+print("\nFile ready for HUGS animation!")
