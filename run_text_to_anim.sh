@@ -148,6 +148,9 @@ if [ -f "$output_video" ]; then
     # Sanitize text prompt for filename (replace spaces with underscores, remove special chars)
     sanitized_prompt=$(echo "$text_prompt" | sed 's/[^a-zA-Z0-9 ]//g' | tr ' ' '_')
     final_output="${result_dir}_video/${sanitized_prompt}.mp4"
+
+    mkdir -p "$(dirname "$final_output")"
+
     cp "$output_video" "$final_output"
     log "Animation complete! Final video: $final_output"
 else
@@ -159,6 +162,6 @@ end_timer
 pipeline_end=$(date +%s)
 total_elapsed=$((pipeline_end - pipeline_start))
 
-og "Pipeline complete!"
+log "Pipeline complete!"
 log "Results saved in: $result_dir"
 echo "🏁 Total pipeline time: ${total_elapsed}s ($(date -u -d @${total_elapsed} +%H:%M:%S))"
