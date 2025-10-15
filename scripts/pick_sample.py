@@ -31,11 +31,14 @@ if __name__ == '__main__':
     npy2obj = vis_utils.npy2obj(params.npy_path, params.sample_id, params.rep_id,
                                 device=params.device, cuda=params.cuda)
 
-    # skip the mesh rendering part
-    # print('Saving obj files to [{}]'.format(os.path.abspath(params.output_dir)))
-    # for frame_i in tqdm(range(npy2obj.real_num_frames)):
-    #     npy2obj.save_obj(os.path.join(params.output_dir, 'mesh/frame{:03d}.obj'.format(frame_i)), frame_i)
+    #comment out this part to skip the mesh rendering
+    print('Saving obj files to [{}]'.format(os.path.abspath(params.output_dir)))
+    mesh_dir = os.path.join(params.output_dir, 'mesh')
+    os.makedirs(mesh_dir, exist_ok=True)
+    for frame_i in tqdm(range(npy2obj.real_num_frames)):
+        npy2obj.save_obj(os.path.join(mesh_dir, 'frame{:03d}.obj'.format(frame_i)), frame_i)
 
+    # save the SMPL parameters
     out_npy_path = os.path.join(params.output_dir, 'smpl_params.npy')
     print('Saving SMPL params to [{}]'.format(os.path.abspath(out_npy_path)))
     npy2obj.save_npy(out_npy_path)

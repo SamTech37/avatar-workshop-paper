@@ -163,5 +163,5 @@ pipeline_end=$(date +%s)
 total_elapsed=$((pipeline_end - pipeline_start))
 
 log "Pipeline complete!"
-log "Results saved in: $result_dir"
+log "Results saved in: ${result_dir} and ${result_dir}_video"
 echo "🏁 Total pipeline time: ${total_elapsed}s ($(date -u -d @${total_elapsed} +%H:%M:%S))"
