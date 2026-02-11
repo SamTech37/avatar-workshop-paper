@@ -15,7 +15,7 @@ export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 default_prompt="A person is breakdancing"
 text_prompt="${1:-$default_prompt}"
 
-total_stages=3
+total_stages=4
 
 # Directories (relative to script location)
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -119,23 +119,30 @@ conda run -n "$mdm_env" python -m sample.generate \
     --num_repetitions 1 \
     --motion_length "$motion_length" || error "Motion generation failed"
 
-# Extract sample
-log "Extracting motion sample..."
+log "SMPL motion generation complete"
+stage1_end=$(date +%s)
+stage1_elapsed=$((stage1_end - stage1_start))
+end_timer
+
+# Step 2: Extract sample
+start_timer
+stage2_start=$(date +%s)
+log "Step 2/$total_stages: Extracting motion sample"
 conda run -n "$mdm_env" python -m visualize.pick_sample \
     --npy_path "$result_dir/results.npy" \
     --sample_id 0 \
     --rep_id 0 \
     --output_dir "$result_dir" || error "Sample extraction failed"
 
-log "SMPL motion generation complete"
-stage1_end=$(date +%s)
-stage1_elapsed=$((stage1_end - stage1_start))
+log "Sample extraction complete"
+stage2_end=$(date +%s)
+stage2_elapsed=$((stage2_end - stage2_start))
 end_timer
 
-# Step 2: Convert motion format
+# Step 3: Convert motion format
 start_timer
-stage2_start=$(date +%s)
-log "Step 2/$total_stages: Converting motion format for HUGS"
+stage3_start=$(date +%s)
+log "Step 3/$total_stages: Converting motion format for HUGS"
 cd "$main_dir"
 
 smpl_npy="$result_dir/smpl_params.npy"
@@ -149,14 +156,15 @@ npz_file="$(ls -1v "$result_dir"/*.npz 2>/dev/null | tail -n1)"
 log "Using NPZ file: $npz_file"
 
 cp "$npz_file" "$hugs_dir/smpl_params.npz" || error "Failed to copy NPZ file"
-stage2_end=$(date +%s)
-stage2_elapsed=$((stage2_end - stage2_start))
+log "Motion format conversion complete"
+stage3_end=$(date +%s)
+stage3_elapsed=$((stage3_end - stage3_start))
 end_timer
 
-# Step 3: Run HUGS animation
+# Step 4: Run HUGS animation
 start_timer
-stage3_start=$(date +%s)
-log "Step 3/$total_stages: Running HUGS animation (this may take a while)"
+stage4_start=$(date +%s)
+log "Step 4/$total_stages: Running HUGS animation (this may take a while)"
 cd "$hugs_dir"
 
 conda run -n "$hugs_env" python scripts/hugs_animate.py \
@@ -177,8 +185,8 @@ else
     log "Animation completed but output video not found at expected location: $output_video"
 fi
 
-stage3_end=$(date +%s)
-stage3_elapsed=$((stage3_end - stage3_start))
+stage4_end=$(date +%s)
+stage4_elapsed=$((stage4_end - stage4_start))
 end_timer
 
 pipeline_end=$(date +%s)
@@ -195,3 +203,4 @@ echo "TIMING_DATA: Total=${total_elapsed}s" >> "$log_file"
 echo "TIMING_DATA: Stage1=${stage1_elapsed}s" >> "$log_file"
 echo "TIMING_DATA: Stage2=${stage2_elapsed}s" >> "$log_file"
 echo "TIMING_DATA: Stage3=${stage3_elapsed}s" >> "$log_file"
+echo "TIMING_DATA: Stage4=${stage4_elapsed}s" >> "$log_file"
