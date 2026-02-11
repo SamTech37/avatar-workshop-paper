@@ -12,7 +12,8 @@ set -e
 export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
 
 # Command line arguments with defaults
-text_prompt="${1:-A person is doing cartwheels}"
+default_prompt="A person is breakdancing"
+text_prompt="${1:-$default_prompt}"
 
 total_stages=3
 
@@ -22,6 +23,12 @@ main_dir="$script_dir"
 result_dir="$script_dir/output"
 mdm_dir="$script_dir/../motion-diffusion-model"
 hugs_dir="$script_dir/../ml-hugs"
+log_dir="$script_dir/log"
+
+# Logging setup
+timestamp=$(date '+%Y-%m-%d_%H-%M-%S')
+log_file="$log_dir/${timestamp}-log.log"
+mkdir -p "$log_dir"
 
 # Model configuration
 motion_model_name="humanml_enc_512_50steps"
@@ -40,11 +47,15 @@ hugs_env="hugs"
 # ===HELPER FUNCTIONS===
 
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    local message="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$message"
+    echo "$message" >> "$log_file"
 }
 
 error() {
-    echo "[ERROR] $1" >&2
+    local message="[ERROR] $1"
+    echo "$message" >&2
+    echo "$message" >> "$log_file"
     exit 1
 }
 
@@ -56,7 +67,9 @@ start_timer() {
 end_timer() {
     timer_end=$(date +%s)
     elapsed=$((timer_end - timer_start))
-    echo "⏱️  Stage completed in ${elapsed}s ($(date -u -d @${elapsed} +%H:%M:%S))"
+    local message="⏱️  Stage completed in ${elapsed}s ($(date -u -d @${elapsed} +%H:%M:%S))"
+    echo "$message"
+    echo "$message" >> "$log_file"
 }
 
 # ===VALIDATION===
@@ -87,6 +100,7 @@ cp "$script_dir/scripts/hugs_animate.py" "$hugs_dir/scripts/hugs_animate.py" || 
 
 # Step 1: Generate SMPL motion
 start_timer
+stage1_start=$(date +%s)
 log "Step 1/$total_stages: Generating SMPL motion"
 cd "$mdm_dir"
 
@@ -114,10 +128,13 @@ conda run -n "$mdm_env" python -m visualize.pick_sample \
     --output_dir "$result_dir" || error "Sample extraction failed"
 
 log "SMPL motion generation complete"
+stage1_end=$(date +%s)
+stage1_elapsed=$((stage1_end - stage1_start))
 end_timer
 
 # Step 2: Convert motion format
 start_timer
+stage2_start=$(date +%s)
 log "Step 2/$total_stages: Converting motion format for HUGS"
 cd "$main_dir"
 
@@ -132,10 +149,13 @@ npz_file="$(ls -1v "$result_dir"/*.npz 2>/dev/null | tail -n1)"
 log "Using NPZ file: $npz_file"
 
 cp "$npz_file" "$hugs_dir/smpl_params.npz" || error "Failed to copy NPZ file"
+stage2_end=$(date +%s)
+stage2_elapsed=$((stage2_end - stage2_start))
 end_timer
 
 # Step 3: Run HUGS animation
 start_timer
+stage3_start=$(date +%s)
 log "Step 3/$total_stages: Running HUGS animation (this may take a while)"
 cd "$hugs_dir"
 
@@ -157,6 +177,8 @@ else
     log "Animation completed but output video not found at expected location: $output_video"
 fi
 
+stage3_end=$(date +%s)
+stage3_elapsed=$((stage3_end - stage3_start))
 end_timer
 
 pipeline_end=$(date +%s)
@@ -164,4 +186,12 @@ total_elapsed=$((pipeline_end - pipeline_start))
 
 log "Pipeline complete!"
 log "Results saved in: ${result_dir} and ${result_dir}_video"
-echo "🏁 Total pipeline time: ${total_elapsed}s ($(date -u -d @${total_elapsed} +%H:%M:%S))"
+total_time_message="🏁 Total pipeline time: ${total_elapsed}s ($(date -u -d @${total_elapsed} +%H:%M:%S))"
+echo "$total_time_message"
+echo "$total_time_message" >> "$log_file"
+
+# Save timing data for benchmarking
+echo "TIMING_DATA: Total=${total_elapsed}s" >> "$log_file"
+echo "TIMING_DATA: Stage1=${stage1_elapsed}s" >> "$log_file"
+echo "TIMING_DATA: Stage2=${stage2_elapsed}s" >> "$log_file"
+echo "TIMING_DATA: Stage3=${stage3_elapsed}s" >> "$log_file"
