@@ -1,0 +1,28 @@
+[2026-02-11 05:54:11] Starting benchmarking session
+[2026-02-11 05:54:11] Text prompt: A person is breakdancing
+[2026-02-11 05:54:11] Number of iterations: 10
+[2026-02-11 05:54:11] Animation script: /mnt/data1/samk/avatar/avatar-workshop-paper/run_text_to_anim.sh
+[2026-02-11 05:54:11] Results will be saved to: /mnt/data1/samk/avatar/avatar-workshop-paper/benchmark/timing_data_2026-02-11_05-54-11.csv
+[2026-02-11 05:54:11] Starting iteration 1/10
+[2026-02-11 05:57:48] Iteration 1 completed successfully - Total: 217s, Stage1: 14s, Stage2: 119s, Stage3: 2s, Stage4: 82s
+[2026-02-11 05:57:50] Starting iteration 2/10
+[2026-02-11 06:01:33] Iteration 2 completed successfully - Total: 223s, Stage1: 15s, Stage2: 121s, Stage3: 3s, Stage4: 84s
+[2026-02-11 06:01:35] Starting iteration 3/10
+[2026-02-11 06:05:15] Iteration 3 completed successfully - Total: 220s, Stage1: 14s, Stage2: 119s, Stage3: 2s, Stage4: 85s
+[2026-02-11 06:05:17] Starting iteration 4/10
+[2026-02-11 06:08:55] Iteration 4 completed successfully - Total: 218s, Stage1: 15s, Stage2: 116s, Stage3: 2s, Stage4: 84s
+[2026-02-11 06:08:57] Starting iteration 5/10
+[2026-02-11 06:12:35] Iteration 5 completed successfully - Total: 218s, Stage1: 15s, Stage2: 118s, Stage3: 2s, Stage4: 83s
+[2026-02-11 06:12:37] Starting iteration 6/10
+[2026-02-11 06:16:14] Iteration 6 completed successfully - Total: 216s, Stage1: 15s, Stage2: 117s, Stage3: 2s, Stage4: 82s
+[2026-02-11 06:16:16] Starting iteration 7/10
+[2026-02-11 06:19:59] Iteration 7 completed successfully - Total: 223s, Stage1: 15s, Stage2: 121s, Stage3: 2s, Stage4: 85s
+[2026-02-11 06:20:01] Starting iteration 8/10
+[2026-02-11 06:23:33] Iteration 8 completed successfully - Total: 212s, Stage1: 15s, Stage2: 111s, Stage3: 2s, Stage4: 84s
+[2026-02-11 06:23:35] Starting iteration 9/10
+[2026-02-11 06:27:17] Iteration 9 completed successfully - Total: 221s, Stage1: 15s, Stage2: 121s, Stage3: 2s, Stage4: 83s
+[2026-02-11 06:27:19] Starting iteration 10/10
+[2026-02-11 06:30:56] Iteration 10 completed successfully - Total: 217s, Stage1: 15s, Stage2: 115s, Stage3: 2s, Stage4: 85s
+[2026-02-11 06:30:58] Benchmarking completed!
+[2026-02-11 06:30:58] Total benchmark time: 2207s
+[2026-02-11 06:30:58] Results saved to: /mnt/data1/samk/avatar/avatar-workshop-paper/benchmark/timing_data_2026-02-11_05-54-11.csv
